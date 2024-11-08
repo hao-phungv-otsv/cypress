@@ -1,0 +1,48 @@
+name: End-to-end tests schedule
+
+on:
+  schedule:
+    - cron: '0 1 * * 1-5'
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  cypress-run:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # Install npm dependencies, cache them correctly
+      # and run all Cypress tests
+      - name: Cypress run
+        uses: cypress-io/github-action@v6
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-result-report
+          path: cucumber-report.html
+          retention-days: 30
+          if-no-files-found: error
+      - name: Send message to Google Chat
+        env:
+          GOOGLE_CHAT_WEBHOOK_URL: ${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -d '{
+              "cards": [
+                  {
+                      "sections": [
+                          {
+                              "header": "System Test E2E",
+                              "widgets": [
+                                  {
+                                      "textParagraph": {
+                                          "text": "E2E for system test schedule!"
+                                      }
+                                  }
+                              ]
+                          }
+                      ]
+                  }
+              ]
+          }' $GOOGLE_CHAT_WEBHOOK_URL
